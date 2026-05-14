@@ -108,6 +108,32 @@
     .log .entry.err { color: #f87171; }
     .log .entry.info{ color: #60a5fa; }
     .log .entry.warn{ color: #fbbf24; }
+
+    /* ── Job banner ── */
+    .job-banner {
+      padding: 10px 12px; border-radius: 8px; margin-bottom: 12px;
+      font-size: 13px; font-weight: 600;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .job-banner.ok { background: #065f46; color: #4ade80; }
+    .job-banner.fail { background: #7f1d1d; color: #f87171; }
+    .job-banner .dismiss {
+      background: none; border: none; color: inherit; opacity: 0.6;
+      cursor: pointer; font-size: 14px; padding: 0 2px;
+    }
+    .job-banner .dismiss:hover { opacity: 1; }
+
+    /* ── Summary ── */
+    .summary { padding: 8px 0; }
+    .summary-stats {
+      display: flex; gap: 12px; font-size: 12px; font-weight: 600;
+      padding: 6px 0; border-bottom: 1px solid #222; margin-bottom: 6px;
+    }
+    .stat-ok { color: #4ade80; }
+    .stat-err { color: #f87171; }
+    .stat-time { color: #888; margin-left: auto; }
+    .summary-failed { font-size: 11px; max-height: 120px; overflow-y: auto; }
+    .fail-row { color: #f87171; padding: 2px 0; border-bottom: 1px solid #1a1a1a; }
   </style>
 </head>
 <body>
@@ -115,6 +141,8 @@
     <h2 style="margin:0">Flow Auto Prompt</h2>
     <button id="btn-close" style="background:transparent;border:none;color:#555;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:4px;" title="Close">✕</button>
   </div>
+
+  <div id="job-banner" class="job-banner" style="display:none;"></div>
 
   <!-- Mode tabs -->
   <div style="display:flex;gap:4px;margin-bottom:12px;">
@@ -190,6 +218,11 @@
     <input type="number" id="threads" value="1" min="1" max="10" />
   </div>
 
+  <div class="delay-row">
+    <label>Max retries per prompt</label>
+    <input type="number" id="max-retries" value="3" min="0" max="10" />
+  </div>
+
   <!-- Auto-download -->
   <div class="ref-section">
     <div class="ref-label" style="display:flex;align-items:center;gap:8px;">
@@ -198,17 +231,17 @@
     </div>
     <div id="dl-fields" style="display:none;margin-top:8px;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
-        <label style="font-size:11px;color:#888;flex:0 0 80px;">Subfolder</label>
-        <input type="text" id="dl-folder" value="flow-auto" placeholder="under Downloads/"
+        <label style="font-size:11px;color:#888;flex:0 0 80px;">Path</label>
+        <input type="text" id="dl-folder" value="flow-auto" placeholder="subfolder under Downloads/"
           style="flex:1;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#e8e8e8;font-size:12px;padding:4px 8px;outline:none;" />
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
-        <label style="font-size:11px;color:#888;flex:0 0 80px;">Prefix</label>
-        <input type="text" id="dl-prefix" value="scene" placeholder="filename prefix"
+        <label style="font-size:11px;color:#888;flex:0 0 80px;">From</label>
+        <input type="number" id="dl-from" value="1" min="0" placeholder="starting number"
           style="flex:1;background:#1a1a1a;border:1px solid #333;border-radius:6px;color:#e8e8e8;font-size:12px;padding:4px 8px;outline:none;" />
       </div>
       <div style="font-size:10px;color:#555;margin-top:6px;line-height:1.4;">
-        Saves as <code style="color:#888;">Downloads/&lt;subfolder&gt;/&lt;prefix&gt;_001.png</code>. Each worker waits for image completion (≤90s) before downloading.
+        Saves as <code style="color:#888;">Downloads/&lt;path&gt;/1.png, 2.png, 3.png...</code>
       </div>
     </div>
   </div>
@@ -226,6 +259,7 @@
     <div class="progress-bar-bg">
       <div class="progress-bar-fill" id="progress-bar"></div>
     </div>
+    <div id="summary-panel" style="display:none;"></div>
     <div class="log" id="log"></div>
   </div>
 
